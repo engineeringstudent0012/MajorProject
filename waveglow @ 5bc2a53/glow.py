@@ -34,20 +34,13 @@ class WaveGlowLoss(torch.nn.Module):
 
 
 class Invertible1x1Conv(torch.nn.Module):
-    """
-    The layer outputs both the convolution, and the log determinant
-    of its weight matrix.  If reverse=True it does convolution with
-    inverse
-    """
     def __init__(self, c):
         super(Invertible1x1Conv, self).__init__()
         self.conv = torch.nn.Conv1d(c, c, kernel_size=1, stride=1, padding=0,
                                     bias=False)
 
-        # Sample a random orthonormal matrix to initialize weights
         W = torch.qr(torch.FloatTensor(c, c).normal_())[0]
 
-        # Ensure determinant is 1.0 not -1.0
         if torch.det(W) < 0:
             W[:,0] = -1*W[:,0]
         W = W.view(c, c, 1)
@@ -77,11 +70,6 @@ class Invertible1x1Conv(torch.nn.Module):
 
 
 class WN(torch.nn.Module):
-    """
-    This is the WaveNet like layer for the affine coupling.  The primary difference
-    from WaveNet is the convolutions need not be causal.  There is also no dilation
-    size reset.  The dilation only doubles on each layer
-    """
     def __init__(self, n_in_channels, n_mel_channels, n_layers, n_channels,
                  kernel_size):
         super(WN, self).__init__()
@@ -96,7 +84,6 @@ class WN(torch.nn.Module):
         start = torch.nn.utils.weight_norm(start, name='weight')
         self.start = start
 
-        # Initializing last layer to 0 makes the affine coupling layers
         # do nothing at first.  This helps with training stability
         end = torch.nn.Conv1d(n_channels, 2*n_in_channels, 1)
         end.weight.data.zero_()
@@ -115,7 +102,6 @@ class WN(torch.nn.Module):
             self.in_layers.append(in_layer)
 
 
-            # last one is not necessary
             if i < n_layers - 1:
                 res_skip_channels = 2*n_channels
             else:
@@ -167,8 +153,6 @@ class WaveGlow(torch.nn.Module):
 
         n_half = int(n_group/2)
 
-        # Set up layers with the right sizes based on how many dimensions
-        # have been output already
         n_remaining_channels = n_group
         for k in range(n_flows):
             if k % self.n_early_every == 0 and k > 0:
@@ -224,7 +208,6 @@ class WaveGlow(torch.nn.Module):
 
     def infer(self, spect, sigma=1.0):
         spect = self.upsample(spect)
-        # trim conv artifacts. maybe pad spec to kernel multiple
         time_cutoff = self.upsample.kernel_size[0] - self.upsample.stride[0]
         spect = spect[:, :, :-time_cutoff]
 
