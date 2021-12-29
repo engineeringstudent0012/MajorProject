@@ -1,4 +1,0 @@
-[submodule "waveglow"]
-	path = waveglow
-	url = https://github.com/engineeringstudent0012/waveglow
-	branch = master
