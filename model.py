@@ -340,7 +340,7 @@ class Decoder(nn.Module):
 
     def inference(self, memory):
         """ Decoder inference
-        PARAMS
+        PARAM
         """
         decoder_input = self.get_go_frame(memory)
 
