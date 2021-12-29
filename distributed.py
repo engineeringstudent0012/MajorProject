@@ -4,32 +4,14 @@ from torch.nn.modules import Module
 from torch.autograd import Variable
 
 def _flatten_dense_tensors(tensors):
-    """Flatten dense tensors into a contiguous 1D buffer. Assume tensors are of
-    same dense type.
-    Since inputs are dense, the resulting tensor will be a concatenated 1D
-    buffer. Element-wise operation on this buffer will be equivalent to
-    operating individually.
-    Arguments:
-        tensors (Iterable[Tensor]): dense tensors to flatten.
-    Returns:
-        A contiguous 1D buffer containing input tensors.
-    """
+    
     if len(tensors) == 1:
         return tensors[0].contiguous().view(-1)
     flat = torch.cat([t.contiguous().view(-1) for t in tensors], dim=0)
     return flat
 
 def _unflatten_dense_tensors(flat, tensors):
-    """View a flat buffer using the sizes of tensors. Assume that tensors are of
-    same dense type, and that flat is given by _flatten_dense_tensors.
-    Arguments:
-        flat (Tensor): flattened dense tensors to unflatten.
-        tensors (Iterable[Tensor]): dense tensors whose sizes will be used to
-          unflatten flat.
-    Returns:
-        Unflattened dense tensors with sizes same as tensors and values from
-        flat.
-    """
+    
     outputs = []
     offset = 0
     for tensor in tensors:
@@ -39,15 +21,7 @@ def _unflatten_dense_tensors(flat, tensors):
     return tuple(outputs)
 
 
-'''
-This version of DistributedDataParallel is designed to be used in conjunction with the multiproc.py
-launcher included with this example. It assumes that your run is using multiprocess with 1
-GPU/process, that the model is on the correct device, and that torch.set_device has been
-used to set the device.
 
-Parameters are broadcasted to the other processes on initialization of DistributedDataParallel,
-and will be allreduced at the finish of the backward pass.
-'''
 class DistributedDataParallel(Module):
 
     def __init__(self, module):
@@ -101,28 +75,7 @@ class DistributedDataParallel(Module):
         self.needs_reduction = True
         return self.module(*inputs, **kwargs)
 
-    '''
-    def _sync_buffers(self):
-        buffers = list(self.module._all_buffers())
-        if len(buffers) > 0:
-            # cross-node buffer sync
-            flat_buffers = _flatten_dense_tensors(buffers)
-            dist.broadcast(flat_buffers, 0)
-            for buf, synced in zip(buffers, _unflatten_dense_tensors(flat_buffers, buffers)):
-                buf.copy_(synced)
-     def train(self, mode=True):
-        # Clear NCCL communicator and CUDA event cache of the default group ID,
-        # These cache will be recreated at the later call. This is currently a
-        # work-around for a potential NCCL deadlock.
-        if dist._backend == dist.dist_backend.NCCL:
-            dist._clear_group_cache()
-        super(DistributedDataParallel, self).train(mode)
-        self.module.train(mode)
-    '''
-'''
-Modifies existing model to do gradient allreduce, but doesn't change class
-so you don't need "module"
-'''
+    
 def apply_gradient_allreduce(module):
         if not hasattr(dist, '_backend'):
             module.warn_on_half = True
