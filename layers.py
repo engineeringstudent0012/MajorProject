@@ -62,14 +62,7 @@ class TacotronSTFT(torch.nn.Module):
 
     def mel_spectrogram(self, y):
         """Computes mel-spectrograms from a batch of waves
-        PARAMS
-        ------
-        y: Variable(torch.FloatTensor) with shape (B, T) in range [-1, 1]
-
-        RETURNS
-        -------
-        mel_output: torch.FloatTensor of shape (B, n_mel_channels, T)
-        """
+        PARAMS"""
         assert(torch.min(y.data) >= -1)
         assert(torch.max(y.data) <= 1)
 
