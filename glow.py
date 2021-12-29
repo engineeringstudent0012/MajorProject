@@ -1,29 +1,3 @@
-# *****************************************************************************
-#  Copyright (c) 2018, NVIDIA CORPORATION.  All rights reserved.
-#
-#  Redistribution and use in source and binary forms, with or without
-#  modification, are permitted provided that the following conditions are met:
-#      * Redistributions of source code must retain the above copyright
-#        notice, this list of conditions and the following disclaimer.
-#      * Redistributions in binary form must reproduce the above copyright
-#        notice, this list of conditions and the following disclaimer in the
-#        documentation and/or other materials provided with the distribution.
-#      * Neither the name of the NVIDIA CORPORATION nor the
-#        names of its contributors may be used to endorse or promote products
-#        derived from this software without specific prior written permission.
-#
-#  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
-#  ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
-#  WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-#  DISCLAIMED. IN NO EVENT SHALL NVIDIA CORPORATION BE LIABLE FOR ANY
-#  DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
-#  (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
-#  LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
-#  ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-#  (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
-#  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-#
-# *****************************************************************************
 import copy
 import torch
 from torch.autograd import Variable
@@ -60,20 +34,14 @@ class WaveGlowLoss(torch.nn.Module):
 
 
 class Invertible1x1Conv(torch.nn.Module):
-    """
-    The layer outputs both the convolution, and the log determinant
-    of its weight matrix.  If reverse=True it does convolution with
-    inverse
-    """
+    
     def __init__(self, c):
         super(Invertible1x1Conv, self).__init__()
         self.conv = torch.nn.Conv1d(c, c, kernel_size=1, stride=1, padding=0,
                                     bias=False)
 
-        # Sample a random orthonormal matrix to initialize weights
         W = torch.qr(torch.FloatTensor(c, c).normal_())[0]
 
-        # Ensure determinant is 1.0 not -1.0
         if torch.det(W) < 0:
             W[:,0] = -1*W[:,0]
         W = W.view(c, c, 1)
@@ -103,11 +71,7 @@ class Invertible1x1Conv(torch.nn.Module):
 
 
 class WN(torch.nn.Module):
-    """
-    This is the WaveNet like layer for the affine coupling.  The primary difference
-    from WaveNet is the convolutions need not be causal.  There is also no dilation
-    size reset.  The dilation only doubles on each layer
-    """
+   
     def __init__(self, n_in_channels, n_mel_channels, n_layers, n_channels,
                  kernel_size):
         super(WN, self).__init__()
@@ -122,8 +86,7 @@ class WN(torch.nn.Module):
         start = torch.nn.utils.weight_norm(start, name='weight')
         self.start = start
 
-        # Initializing last layer to 0 makes the affine coupling layers
-        # do nothing at first.  This helps with training stability
+        # This helps with training stability
         end = torch.nn.Conv1d(n_channels, 2*n_in_channels, 1)
         end.weight.data.zero_()
         end.bias.data.zero_()
@@ -141,7 +104,6 @@ class WN(torch.nn.Module):
             self.in_layers.append(in_layer)
 
 
-            # last one is not necessary
             if i < n_layers - 1:
                 res_skip_channels = 2*n_channels
             else:
@@ -193,8 +155,7 @@ class WaveGlow(torch.nn.Module):
 
         n_half = int(n_group/2)
 
-        # Set up layers with the right sizes based on how many dimensions
-        # have been output already
+        
         n_remaining_channels = n_group
         for k in range(n_flows):
             if k % self.n_early_every == 0 and k > 0:
@@ -205,13 +166,9 @@ class WaveGlow(torch.nn.Module):
         self.n_remaining_channels = n_remaining_channels  # Useful during inference
 
     def forward(self, forward_input):
-        """
-        forward_input[0] = mel_spectrogram:  batch x n_mel_channels x frames
-        forward_input[1] = audio: batch x time
-        """
+        
         spect, audio = forward_input
 
-        #  Upsample spectrogram to size of audio
         spect = self.upsample(spect)
         assert(spect.size(2) >= audio.size(1))
         if spect.size(2) > audio.size(1):
@@ -250,7 +207,6 @@ class WaveGlow(torch.nn.Module):
 
     def infer(self, spect, sigma=1.0):
         spect = self.upsample(spect)
-        # trim conv artifacts. maybe pad spec to kernel multiple
         time_cutoff = self.upsample.kernel_size[0] - self.upsample.stride[0]
         spect = spect[:, :, :-time_cutoff]
 
